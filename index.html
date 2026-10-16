@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="FeaTok learns discrete image tokens by reconstructing pretrained visual features for image generation.">
+  <title>FeaTok · Feature-Loss Tokenization for Image Generation</title>
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="samples.js"></script>
+  <script defer src="script.js"></script>
+</head>
+<body id="top">
+  <a class="skip" href="#idea">Skip to content</a>
+  <header class="site-header">
+    <a class="wordmark" href="#top">Fea<span>Tok</span></a>
+    <nav aria-label="Main navigation"><a href="#idea">Idea</a><a href="#samples">Samples</a><a href="#method">Method</a><a href="#ablations">Ablations</a><a href="#results">Results</a></nav>
+  </header>
+  <main>
+    <section class="hero container" aria-labelledby="title">
+      <h1 id="title"><span>FeaTok:</span> Feature-Loss Tokenization<br>for Image Generation</h1>
+      <div class="authorship">
+        <p class="authors"><span>Zhang Xiaofeng<sup>1,2,3</sup></span>
+          <span>Samuel Lavoie<sup>1,2,†</sup></span>
+          <span>Nicolas Beltran-Velez<sup>3,6,†</sup></span>
+          <span>Jianhao Yuan<sup>3,7</sup></span>
+          <span>Felix Friedrich<sup>3</sup></span>
+          <span>Jakob Verbeek<sup>3</sup></span>
+          <span class="author-row-break" aria-hidden="true"></span>
+          <span>Aaron Courville<sup>1,2,5,‡</sup></span>
+          <span>Michal Drozdzal<sup>3,‡</sup></span>
+          <span>Adriana Romero-Soriano<sup>1,3,4,5,‡</sup></span></p>
+        <p class="affiliations"><span><sup>1</sup> Mila - Québec AI Institute</span>
+          <span><sup>2</sup> Université de Montréal</span>
+          <span><sup>3</sup> FAIR at Meta</span>
+          <span><sup>4</sup> McGill University</span>
+          <span><sup>5</sup> Canada CIFAR AI chair</span>
+          <span><sup>6</sup> Columbia University</span>
+          <span><sup>7</sup> University of Oxford</span></p>
+        <p class="contributions">† Equal contribution &nbsp; · &nbsp; ‡ Co-senior authors &nbsp; · &nbsp; <a href="mailto:xiaofeng.zhang@mila.quebec">xiaofeng.zhang@mila.quebec</a></p>
+      </div>
+      <div class="hero-actions"><a class="button primary" href="https://arxiv.org/abs/2610.22060" target="_blank" rel="noopener">Read the paper ↗</a><span class="release-note release-status">Code &amp; model checkpoints · Awaiting open-source approval</span></div>
+    </section>
+
+    <section id="idea" class="container section idea">
+      <div class="section-heading"><p class="eyebrow">01 / Core idea</p><h2>Learn representations<br>in feature space.</h2></div>
+      <div class="idea-copy"><p><strong>Learning visual representations in feature space improves downstream image generation.</strong> We observe this trend across both discrete and continuous representations.</p><p>FeaTok learns to reconstruct pretrained visual features. A separate decoder learns to turn the tokens into images, while pixel reconstruction gradients are kept out of the tokenizer.</p></div>
+    </section>
+
+    <div class="container teaser-heading">
+      <p>The comparison below shows a clear trend across pixel-based, mixed, and feature-based representations: <strong>learning discrete token representations in feature space improves the quality–compute trade-off for image generation.</strong></p>
+    </div>
+
+    <figure class="container teaser figure-frame">
+      <a href="assets/figures/teaser.pdf" target="_blank" rel="noopener" aria-label="Open full-resolution teaser PDF"><img src="assets/figures/teaser.svg" width="1500" height="700" alt="Paper teaser comparing generation quality and sampling compute for pixel-based, mixed, and feature-based image generation models."></a>
+      <figcaption>Generation quality versus sampling cost on ImageNet, without guidance. Better results lie toward the lower left.</figcaption>
+    </figure>
+
+    <section id="samples" class="section samples-section">
+      <div class="container section-heading"><p class="eyebrow">02 / Visual samples</p></div>
+      <div class="gallery container imagenet-gallery" role="region" aria-label="ImageNet class collages">
+        <div class="gallery-heading"><div><h3>ImageNet</h3></div></div>
+        <div class="class-navigation">
+          <button class="button class-arrow" id="previous-class" type="button" aria-label="Previous ImageNet class" aria-controls="class-collage">←</button>
+          <div aria-live="polite" aria-atomic="true"><h4 id="class-name"></h4><p id="class-count"></p></div>
+          <button class="button class-arrow" id="next-class" type="button" aria-label="Next ImageNet class" aria-controls="class-collage">→</button>
+        </div>
+        <div id="class-collage" class="class-collage"></div>
+      </div>
+      <div class="gallery" data-gallery="t2i">
+        <div class="container gallery-heading"><div><h3>Text-to-image generation</h3><p>The text-to-image model uses a discrete tokenizer trained on ImageNet-1k to reconstruct SigLIP2 features.</p></div><button class="pause button" type="button" aria-pressed="false">Pause gallery</button></div>
+        <div class="marquee" tabindex="0" role="region" aria-label="Text-to-image samples. Focus or hover to pause."><div class="track"></div></div>
+      </div>
+      <noscript><p class="container">Enable JavaScript to browse the image galleries.</p></noscript>
+    </section>
+
+    <section id="method" class="container section">
+      <div class="section-heading"><p class="eyebrow">03 / Method</p><h2>Learn discrete tokens from visual features.</h2><p>Feature reconstruction trains the tokenizer. Pixel reconstruction trains the image decoder.</p></div>
+      <figure class="figure-frame"><a href="assets/figures/method.pdf" target="_blank" rel="noopener"><img loading="lazy" src="assets/figures/method.svg" alt="FeaTok training pipeline with separate global and patch quantizers. Feature losses train the tokenizer, while pixel losses train only the image decoder."></a></figure>
+      <div class="steps"><article><span>01 / Feature loss</span><h3>Train tokens with feature loss only</h3><p>Train the tokenizer to reconstruct pretrained visual features. Stop gradients at the pixel decoder’s input so that pixel losses train only the decoder.</p></article><article><span>02 / Global to local</span><h3>Discretize global and patch tokens</h3><p>Use separate quantizers for global and patch features. Sample the global token first, then generate patch tokens conditioned on it.</p></article><article><span>03 / Encoder layers</span><h3>Combine encoder layers</h3><p>Average normalized features from four evenly spaced encoder layers to combine visual detail with semantic information.</p></article></div>
+    </section>
+
+    <section id="ablations" class="section ablation-section"><div class="container">
+      <div class="section-heading"><p class="eyebrow">04 / Controlled ablations</p></div>
+      <div class="ablation-grid">
+        <article><figure><a href="assets/figures/targets.pdf" target="_blank" rel="noopener"><img loading="lazy" src="assets/figures/targets.svg" alt="Tokenizer-target ablation comparing pixel, mixed, and feature targets."></a></figure><p class="ablation-step">01 / Feature loss</p><h3>Feature targets</h3><p>With patch tokens alone, feature targets improve generation over pixel targets for SigLIP, DINOv2, and DINOv3. SigLIP2 does not improve in this setting.</p></article>
+        <article><figure><a href="assets/figures/global.pdf" target="_blank" rel="noopener"><img loading="lazy" src="assets/figures/global.svg" alt="Global augmentation ablation across four vision encoders."></a></figure><p class="ablation-step">02 / Global to local</p><h3>Global conditioning</h3><p>With the tokenizer held fixed, conditioning patch generation on a global token improves results for all four encoders.</p></article>
+        <article><figure><a href="assets/figures/depth.pdf" target="_blank" rel="noopener"><img loading="lazy" src="assets/figures/depth.svg" alt="Feature-target depth ablation comparing first layer, last layer, and four-layer average."></a></figure><p class="ablation-step">03 / Encoder layers</p><h3>Multi-layer features</h3><p>Averaging four encoder layers gives lower gFID than using the first or last layer alone. This holds for all four encoders when generation includes a global token.</p></article>
+      </div>
+    </div></section>
+
+    <section id="results" class="container section">
+      <div class="section-heading"><p class="eyebrow">05 / Experimental results</p><h2>Image generation results</h2><p>We compare generation quality at two resolutions, sampling cost, and scores from human-preference models.</p></div>
+      <p class="metric-note">We report <strong>gFDr6 ↓</strong>, the mean Fréchet-distance ratio across six feature spaces. Lower scores are better. Sampling cost includes generation and one decoder pass. The best scores in each table are shown in bold.</p>
+      <article class="result-block">
+        <h3>ImageNet-1k · 256 × 256</h3>
+        <p>All four FeaTok-L variants outperform the discrete baselines shown below. FeaTok-L-DINOv3 achieves the lowest gFDr6, both with and without guidance.</p>
+<div class="results-table-scroll" tabindex="0" role="region" aria-label="Discrete generation · selected models from Table 1"><table class="results-table"><caption>Discrete generation · selected models from Table 1</caption><thead><tr><th scope="col">Model</th><th scope="col">Generator size</th><th scope="col">TFLOPs/image<br><small>without guidance</small></th><th scope="col">gFDr6 ↓<br><small>without guidance</small></th><th scope="col">gFDr6 ↓<br><small>with guidance</small></th></tr></thead><tbody><tr><th scope="row">VAR-d30</th><td>2.0B</td><td>2.29</td><td>12.14</td><td>6.75</td></tr><tr><th scope="row">LlamaGen-3B</th><td>3.1B</td><td>4.18</td><td>13.70</td><td>5.97</td></tr><tr><th scope="row">Gigatok-XXL</th><td>1.4B</td><td>1.20</td><td>4.82</td><td>4.24</td></tr><tr><th scope="row">VFMTok2-XXL</th><td>1.4B</td><td>1.09</td><td>4.38</td><td>4.37</td></tr><tr><th scope="row">BAR-B</th><td>0.4B</td><td>0.67</td><td>5.15</td><td>4.89</td></tr><tr><th scope="row">BAR-L</th><td>1.1B</td><td>1.14</td><td>4.57</td><td>4.11</td></tr><tr class="ours-row"><th scope="row">FeaTok-B-DINOv3</th><td>0.4B</td><td>0.71</td><td>3.58</td><td>3.39</td></tr><tr class="ours-row"><th scope="row">FeaTok-L-SigLIP</th><td>1.1B</td><td>1.27</td><td>4.00</td><td>3.92</td></tr><tr class="ours-row"><th scope="row">FeaTok-L-SigLIP2</th><td>1.1B</td><td>1.27</td><td>3.45</td><td>3.27</td></tr><tr class="ours-row"><th scope="row">FeaTok-L-DINOv2</th><td>1.1B</td><td>1.27</td><td>3.47</td><td>3.20</td></tr><tr class="ours-row"><th scope="row">FeaTok-L-DINOv3</th><td>1.1B</td><td>1.27</td><td><strong>3.13</strong></td><td><strong>3.08</strong></td></tr></tbody></table></div>
+      </article>
+      <article class="result-block">
+        <h3>ImageNet-1k · 512 × 512</h3>
+        <p>At 512 × 512, FeaTok-L-DINOv3 also outperforms BAR-L and RAE on gFDr6, both with and without guidance.</p>
+<div class="results-table-scroll" tabindex="0" role="region" aria-label="Higher-resolution generation · Table 4"><table class="results-table"><caption>Higher-resolution generation · Table 4</caption><thead><tr><th scope="col">Model</th><th scope="col">gFDr6 ↓<br><small>without guidance</small></th><th scope="col">gFDr6 ↓<br><small>with guidance</small></th></tr></thead><tbody><tr><th scope="row">RAE-XL</th><td>3.03</td><td>2.13</td></tr><tr><th scope="row">BAR-L</th><td>3.82</td><td>2.94</td></tr><tr class="ours-row"><th scope="row">FeaTok-L-DINOv3</th><td><strong>2.17</strong></td><td><strong>1.80</strong></td></tr></tbody></table></div>
+      </article>
+      <article class="result-block">
+        <h3>Generation quality at lower sampling cost</h3>
+        <p>Without guidance, FeaTok-L-DINOv3 achieves lower gFDr6 than RAEv2 at substantially lower sampling cost. With guidance and its standard sampling budget, RAEv2 achieves the lowest gFDr6 in this comparison.</p>
+<div class="results-table-scroll" tabindex="0" role="region" aria-label="Continuous-model comparison · selected models from Table 2"><table class="results-table"><caption>Continuous-model comparison · selected models from Table 2</caption><thead><tr><th scope="col">Model</th><th scope="col">TFLOPs/image<br><small>without guidance</small></th><th scope="col">gFDr6 ↓<br><small>without guidance</small></th><th scope="col">gFDr6 ↓<br><small>with guidance</small></th></tr></thead><tbody><tr><th scope="row">REPA-E-XL/1</th><td>59.57</td><td>4.32</td><td>3.04</td></tr><tr><th scope="row">RAE-XL</th><td>15.59</td><td>4.32</td><td>3.26</td></tr><tr><th scope="row">RAEv2-XL</th><td>47.72</td><td>3.95</td><td><strong>2.17</strong></td></tr><tr class="ours-row"><th scope="row">FeaTok-L-DINOv3</th><td>1.27</td><td><strong>3.13</strong></td><td>3.08</td></tr></tbody></table></div>
+      </article>
+      <article class="result-block">
+        <h3>Human-preference reward models</h3>
+        <p>We also evaluate generated images with PickScore, HPSv2, and HPSv3, which are trained on human preferences. On PickScore and HPSv2, FeaTok’s SigLIP2, DINOv2, and DINOv3 variants score closer to the training images than any baseline. On HPSv3, FeaTok-DINOv3 and FeaTok-SigLIP are closest. These gains come without training on reward scores.</p>
+        <figure class="figure-frame"><a href="assets/figures/rewards.pdf" target="_blank" rel="noopener"><img loading="lazy" src="assets/figures/rewards.svg" alt="PickScore, HPSv2, and HPSv3 comparisons for generated ImageNet samples, with confidence intervals and real-data reference lines."></a></figure>
+      </article>
+    </section>
+    <section id="citation" class="container section" aria-labelledby="citation-title">
+      <div class="citation-heading"><h2 id="citation-title">BibTeX</h2><div class="citation-actions"><button class="button" id="copy-citation" type="button">Copy citation</button><a class="button" href="assets/featok.bib" download>Download .bib</a></div></div>
+      <pre class="citation-code" tabindex="0" aria-label="BibTeX citation"><code id="citation-text">@misc{featok2026xiaofeng,
+  title  = {{FeaTok}: Feature-Loss Tokenization for Image Generation},
+  author = {Xiaofeng, Zhang and Lavoie, Samuel and
+            Beltran-Velez, Nicolas and Yuan, Jianhao and
+            Friedrich, Felix and Verbeek, Jakob and
+            Courville, Aaron and Drozdzal, Michal and
+            Romero-Soriano, Adriana},
+  note   = {Manuscript}
+}</code></pre>
+      <p id="citation-status" class="citation-status" role="status"></p>
+    </section>
+  </main>
+  <footer class="container"><a class="wordmark" href="#top">Fea<span>Tok</span></a><p>Feature-Loss Tokenization for Image Generation</p><a href="#top">Back to top ↑</a></footer>
+  <dialog id="lightbox" aria-labelledby="lightbox-caption"><button class="close button" type="button" aria-label="Close image viewer">Close ×</button><img id="lightbox-image" alt=""><p id="lightbox-caption"></p></dialog>
+</body>
+</html>
